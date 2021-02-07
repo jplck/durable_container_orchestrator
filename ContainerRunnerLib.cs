@@ -1,15 +1,28 @@
-﻿using Microsoft.Azure.Management.ContainerInstance.Fluent.Models;
+﻿using Microsoft.Azure.Management.ContainerInstance.Fluent;
+using Microsoft.Azure.Management.ContainerInstance.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ContainerRunnerFuncApp
 {
+    class ContainerInstanceExceedingLimitsException : Exception
+    {
+        public ContainerInstanceExceedingLimitsException() { }
+    }
+
+    class ContainerInstanceCommandExecutionFailedException : Exception
+    {
+        public ContainerInstanceCommandExecutionFailedException() { }
+    }
+
     class ContainerRunnerLib
     {
         private static IAzure _azure;
@@ -23,19 +36,17 @@ namespace ContainerRunnerFuncApp
 
         public static ContainerRunnerLib Instance => lazy.Value;
 
-        public async Task<string> CreateContainerGroupAsync(string resourceGroupName, string containerGroupPrefix, string imageName, ILogger log)
+        public async Task<ContainerInstanceReference> CreateContainerGroupAsync(string resourceGroupName, string containerGroupPrefix, string imageName, string startupCommand, ILogger log)
         {
             IResourceGroup resourceGroup = null;
             try
             {
                 resourceGroup = await _azure.ResourceGroups.GetByNameAsync(resourceGroupName);
-                Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($"Found resource group with name {resourceGroupName}");
             } catch (Exception)
             {
                 log.LogWarning("Resource group does not exist. Trying to create it in next step.");
             }
-
             try
             {
                 resourceGroup ??= await _azure.ResourceGroups.Define(resourceGroupName)
@@ -63,26 +74,103 @@ namespace ContainerRunnerFuncApp
                         .WithCpuCoreCount(1.0)
                         .WithMemorySizeInGB(1.0)
                         .WithEnvironmentVariable("TestVar", "test")
+                        //.WithStartingCommandLine(startupCommand)
                         .Attach()
                     .WithDnsPrefix(containerGroupName)
                     .WithRestartPolicy(ContainerGroupRestartPolicy.Never)
                     .CreateAsync();
-
+            
                 Console.WriteLine($"Container group with container Id {containerGroup.Id} created.");
 
-                return containerGroup.Id;
+                return new ContainerInstanceReference()
+                {
+                    ResourceGroupName = resourceGroup.Name,
+                    Name = containerGroupName,
+                    Available = false,
+                    Fqdn = containerGroup.Fqdn,
+                    InstanceId = containerGroup.Id,
+                    StartupCommand = startupCommand,
+                    Ports = new List<int>()
+                    {
+                        80
+                    }
+                };
             }
             catch (Exception ex)
             {
                 log.LogError(ex.Message);
+                throw ex;
             }
+        }
+       
+        public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
+        {
+            var url = $"https://{containerInstance.Fqdn}{path}";
 
-            return null;
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                    var method = new HttpMethod("GET");
+                    var request = new HttpRequestMessage(method, url);
+
+                    if (content != null && content != string.Empty)
+                    {
+                        method = new HttpMethod("POST");
+
+                        request = new HttpRequestMessage(method, url)
+                        {
+                            Content = new StringContent(content, Encoding.UTF8, "application/json")
+                        };
+
+                    }
+
+                    using (HttpResponseMessage response = client.SendAsync(request).Result)
+                    {
+                        response.EnsureSuccessStatusCode();
+                        return await response.Content.ReadAsStringAsync();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                throw new ContainerInstanceCommandExecutionFailedException();
+            }
         }
 
-        public async Task DeleteContainerGroupAsync(string id, ILogger log)
+        public async Task DeleteContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
         {
-            await _azure.ContainerGroups.DeleteByIdAsync(id);
+            await _azure.ContainerGroups.DeleteByIdAsync(containerInstance.InstanceId);
+        }
+
+        public async Task StartContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
+        {
+            log.LogInformation("(Re)Starting container instance from exsiting registration...");
+
+            await _azure.ContainerGroups.StartAsync(containerInstance.ResourceGroupName, containerInstance.Name);
+
+            log.LogInformation("Container instance made available.");
+        }
+
+        public async Task StopContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
+        {
+            var aci = await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
+            await aci.StopAsync();
+        }
+
+        public async Task<IContainerExecResponse> ExecuteContainerCommand(ContainerInstanceReference containerInstance, string command, ILogger log)
+        {
+            try
+            {
+                var aci = await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
+                return await aci.ExecuteCommandAsync(containerInstance.Name, command, 0, 0);
+            }
+            catch (Exception)
+            {
+                throw new ContainerInstanceCommandExecutionFailedException();
+            }
         }
     }
 }
