@@ -56,6 +56,14 @@ namespace ContainerRunnerFuncApp
             Instances.Add(instance);
         }
 
+        public async Task ReleaseContainerInstance(ContainerInstanceReference instance)
+        {
+            var foundInstance = Instances?.Find((i) => i.InstanceId == instance.InstanceId);
+            foundInstance.Available = true;
+        }
+
+        public async Task ReserveInstanceCapacity() => ReservedInstanceCounter += 1;
+
         public Task<int> GetInstanceCountAsync() => Task.FromResult((Instances?.Count ?? 0) + ReservedInstanceCounter);
 
         public Task<List<ContainerInstanceReference>> GetInstancesAsync() =>  Task.FromResult(Instances ?? new List<ContainerInstanceReference>());
@@ -70,15 +78,6 @@ namespace ContainerRunnerFuncApp
         [FunctionName(nameof(ContainerInstanceStatusEntity))]
         public static Task Run([EntityTrigger] IDurableEntityContext ctx)
         => ctx.DispatchAsync<ContainerInstanceStatusEntity>();
-
-        public async Task ReleaseContainerInstance(ContainerInstanceReference instance)
-        {
-            var foundInstance = Instances?.Find((i) => i.InstanceId == instance.InstanceId);
-            foundInstance.Available = true;
-        }
-
-        public async Task ReserveInstanceCapacity() => ReservedInstanceCounter += 1;
-
     }
 
     public interface IContainerInstanceStatusEntity

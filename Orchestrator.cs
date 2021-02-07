@@ -71,14 +71,15 @@ namespace ContainerRunnerFuncApp
                 }
 
                 string startupCommand = "echo \"test\"";
+
+                //Startup command only applied to newly created container instances. The existing instances will run the startup command on restart.
+                //Custom command need to be executed in the next steps.
+
                 var instanceRef = await context.CallActivityAsync<ContainerInstanceReference>("Container_Setup_Activity", (instance, startupCommand));
                 await entity.AddInstanceIfNotExistsAsync(instanceRef);
 
                 //do work with instance
-                /*var response = await context.CallActivityAsync<string>("Container_DoWork_Activity", instance);
-                Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine(response);
-                Console.ForegroundColor = ConsoleColor.White;*/
+                var response = await context.CallActivityAsync<string>("Container_DoWork_Activity", instanceRef);
 
                 await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
                 await entity.ReleaseContainerInstance(instanceRef);

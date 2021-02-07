@@ -10,7 +10,9 @@ namespace ContainerRunnerFuncApp.Activities
         [FunctionName("Container_DoWork_Activity")]
         public static async Task<string> WorkContainerActivityAsync([ActivityTrigger] ContainerInstanceReference containerInstance, ILogger log)
         {
-            return await ContainerRunnerLib.Instance.SendRequestToContainerInstance(containerInstance, "/api", null, log);
+            log.LogWarning($"Doing some work on instance {containerInstance.Name}.");
+            await Task.Delay(15000);
+            return string.Empty;
         }
     }
 }
