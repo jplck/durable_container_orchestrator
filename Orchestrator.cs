@@ -1,34 +1,26 @@
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Management.ContainerInstance.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
 namespace ContainerRunnerFuncApp
 {
-    public static class Function1
+    public static class Orchestrator
     {
-        private const int MaxNumberOfInstances = 2;
-
         [FunctionName("ACI_Main_Orchestrator_Func")]
         public static async Task RunMainOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger log)
         {
             var events = context.GetInput<List<string>>();
+            List<Task> orchestrations = new List<Task>();
 
             var retryOptions = new RetryOptions(TimeSpan.FromSeconds(15), 15)
             {
                 BackoffCoefficient = 1.5
             };
-
-            List<Task> orchestrations = new List<Task>();
 
             try
             {
@@ -39,7 +31,7 @@ namespace ContainerRunnerFuncApp
                 });
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 log.LogWarning("An error occured.");
             }
@@ -70,8 +62,9 @@ namespace ContainerRunnerFuncApp
                     if (instance == null)
                     {
                         instanceCount = await entity.GetInstanceCountAsync();
+                        var maxInstances = int.Parse(Helpers.GetConfig()["Max_Number_Of_Instances"]);
 
-                        if (instanceCount >= MaxNumberOfInstances) { throw new ContainerInstanceExceedingLimitsException(); }
+                        if (instanceCount >= maxInstances) { throw new ContainerInstanceExceedingLimitsException(); }
 
                         await entity.ReserveInstanceCapacity();
                     }
@@ -101,67 +94,6 @@ namespace ContainerRunnerFuncApp
             {
                 throw ex;
             }
-        }
-
-        [FunctionName("Container_Setup_Activity")]
-        public static async Task<ContainerInstanceReference> SetupContainerActivityAsync([ActivityTrigger] IDurableActivityContext ctx, ILogger log)
-        {
-
-            var (instanceReference, commandLine) = ctx.GetInput<(ContainerInstanceReference, string)>();
-
-            if (instanceReference != null)
-            {
-                log.LogWarning("Restarting available instance.");
-                await ContainerRunnerLib.Instance.StartContainerGroupAsync(instanceReference, log);
-            }
-            else
-            {
-                log.LogWarning("No previous container instances available. Creating new one...");
-                var containerGroup = await ContainerRunnerLib.Instance
-                                       .CreateContainerGroupAsync("aci-demo-rg",
-                                                                  "aci-demo",
-                                                                  "mcr.microsoft.com/azuredocs/aci-helloworld",
-                                                                  commandLine,
-                                                                  log);
-                return containerGroup;
-            }
-
-            return instanceReference;
-        }
-
-        [FunctionName("Container_Stop_Activity")]
-        public static async Task StopContainerActivityAsync([ActivityTrigger] ContainerInstanceReference containerInstance, ILogger log)
-        {
-            await ContainerRunnerLib.Instance.StopContainerGroupAsync(containerInstance, log);
-        }
-
-        [FunctionName("Container_DoWork_Activity")]
-        public static async Task<string> WorkContainerActivityAsync([ActivityTrigger] ContainerInstanceReference containerInstance, ILogger log)
-        {
-            return await ContainerRunnerLib.Instance.SendRequestToContainerInstance(containerInstance, "/api", null, log);
-        }
-
-        [FunctionName("Function1_HttpStart")]
-        public static async Task<HttpResponseMessage> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
-        {
-
-            var events = new List<string>
-            {
-                "e1",
-                "e2",
-                "e3",
-                "e4",
-                "e5"
-            };
-
-            string instanceId = await starter.StartNewAsync("ACI_Main_Orchestrator_Func", events);
-
-            log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
-
-            return starter.CreateCheckStatusResponse(req, instanceId);
         }
     }
 }
