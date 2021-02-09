@@ -48,6 +48,12 @@ namespace ContainerRunnerFuncApp
         [JsonProperty("reservedInstanceCounter")]
         private int ReservedInstanceCounter { get; set; }
 
+        public async Task Reset()
+        {
+            Instances.Clear();
+            ReservedInstanceCounter = 0;
+        }
+
         public async Task AddInstanceIfNotExistsAsync(ContainerInstanceReference instance)
         {
             if (Instances == null) { Instances = new List<ContainerInstanceReference>(); }
@@ -93,5 +99,7 @@ namespace ContainerRunnerFuncApp
         public Task<int> GetInstanceCountAsync();
 
         public Task ReserveInstanceCapacity();
+
+        public Task Reset();
     }
 }

@@ -264,3 +264,5 @@ __pycache__/
 *.pyc
 
 credentials.json
+/Properties/PublishProfiles/durablecontainerrunnerfuncapp - ZIP Deploy.pubxml
+/Properties/ServiceDependencies/durablecontainerrunnerfuncapp - ZIP Deploy/profile.arm.json

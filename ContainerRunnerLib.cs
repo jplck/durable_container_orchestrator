@@ -2,6 +2,7 @@
 using Microsoft.Azure.Management.ContainerInstance.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Extensions.Logging;
 using System;
@@ -31,7 +32,14 @@ namespace ContainerRunnerFuncApp
 
         private ContainerRunnerLib()
         {
-            _azure = Azure.Authenticate("./credentials.json").WithDefaultSubscription();
+
+            #if (DEBUG)
+                        _azure = Azure.Authenticate("./credentials.json").WithDefaultSubscription();
+            #else
+                        var credentials = new AzureCredentialsFactory().FromSystemAssignedManagedServiceIdentity(MSIResourceType.AppService, AzureEnvironment.AzureGlobalCloud);
+                        _azure = Azure.Authenticate(credentials).WithDefaultSubscription();
+            #endif
+
         }
 
         public static ContainerRunnerLib Instance => lazy.Value;
@@ -78,6 +86,7 @@ namespace ContainerRunnerFuncApp
                         .Attach()
                     .WithDnsPrefix(containerGroupName)
                     .WithRestartPolicy(ContainerGroupRestartPolicy.Never)
+                    .WithSystemAssignedManagedServiceIdentity()
                     .CreateAsync();
             
                 Console.WriteLine($"Container group with container Id {containerGroup.Id} created.");

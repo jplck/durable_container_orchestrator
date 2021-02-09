@@ -9,6 +9,16 @@ namespace ContainerRunnerFuncApp
 {
     public static class Orchestrator
     {
+        [FunctionName("ACI_Reset_Orchestrator_Func")]
+        public static async Task RunResetOrchestrator(
+            [OrchestrationTrigger] IDurableOrchestrationContext context,
+            ILogger log)
+        {
+            var entityId = new EntityId("ContainerInstanceStatusEntity", "ContainerInstanceStatusEntity");
+            var entity = context.CreateEntityProxy<IContainerInstanceStatusEntity>(entityId);
+            await entity.Reset();
+        }
+
         [FunctionName("ACI_Main_Orchestrator_Func")]
         public static async Task RunMainOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context,

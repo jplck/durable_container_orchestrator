@@ -27,9 +27,19 @@ namespace ContainerRunnerFuncApp
             };
 
             string instanceId = await starter.StartNewAsync("ACI_Main_Orchestrator_Func", events);
-
+            
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
 
+            return starter.CreateCheckStatusResponse(req, instanceId);
+        }
+
+        [FunctionName("Orchestration_Reset_Trigger_Func_HTTP")]
+        public static async Task<HttpResponseMessage> TriggerResetRun(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestMessage req,
+            [DurableClient] IDurableOrchestrationClient starter,
+            ILogger log)
+        {
+            string instanceId = await starter.StartNewAsync("ACI_Reset_Orchestrator_Func", null);
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
     }
