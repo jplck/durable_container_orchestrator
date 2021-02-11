@@ -37,44 +37,45 @@ namespace ContainerRunnerFuncApp
 
         [JsonProperty("startupCommand")]
         public string StartupCommand { get; set; }
+
+        [JsonProperty("created")]
+        [DefaultValue(false)]
+        public bool Created { get; set; }
     }
 
     [JsonObject(MemberSerialization.OptIn)]
     class ContainerInstanceStatusEntity : IContainerInstanceStatusEntity
     {
         [JsonProperty("instances")]
-        private List<ContainerInstanceReference> Instances { get; set; }
-
-        [JsonProperty("reservedInstanceCounter")]
-        private int ReservedInstanceCounter { get; set; }
+        private List<ContainerInstanceReference> Instances { get; set; } = new List<ContainerInstanceReference>();
 
         public async Task Reset()
         {
             Instances.Clear();
-            ReservedInstanceCounter = 0;
-        }
-
-        public async Task AddInstanceIfNotExistsAsync(ContainerInstanceReference instance)
-        {
-            if (Instances == null) { Instances = new List<ContainerInstanceReference>(); }
-            if (Instances.Any(i => i.Name == instance.Name)) { return; }
-            ReservedInstanceCounter -= 1;
-            Instances.Add(instance);
         }
 
         public async Task ReleaseContainerInstance(ContainerInstanceReference instance)
         {
-            var foundInstance = Instances?.Find((i) => i.InstanceId == instance.InstanceId);
+            var foundInstance = GetExistingInstanceByName(instance.Name);
             foundInstance.Available = true;
         }
 
-        public async Task ReserveInstanceCapacity() => ReservedInstanceCounter += 1;
+        public async Task<ContainerInstanceReference> ReserveEmptyContainerGroupReference(string name)
+        {
+            var instance = new ContainerInstanceReference()
+            {
+                Name = name
+            };
 
-        public Task<int> GetInstanceCountAsync() => Task.FromResult((Instances?.Count ?? 0) + ReservedInstanceCounter);
+            Instances.Add(instance);
+            return instance;
+        }
 
-        public Task<List<ContainerInstanceReference>> GetInstancesAsync() =>  Task.FromResult(Instances ?? new List<ContainerInstanceReference>());
+        public Task<int> GetContainerGroupCountAsync() => Task.FromResult(Instances?.Count ?? 0);
 
-        public Task<ContainerInstanceReference> GetNextAvailableInstanceAsync()
+        public Task<List<ContainerInstanceReference>> GetInstancesAsync() =>  Task.FromResult(Instances);
+
+        public Task<ContainerInstanceReference> GetNextAvailableContainerGroupAsync()
         {
             var instance = Instances?.Find((instance) => instance.Available);
             if (instance != null) { instance.Available = false; }
@@ -84,22 +85,30 @@ namespace ContainerRunnerFuncApp
         [FunctionName(nameof(ContainerInstanceStatusEntity))]
         public static Task Run([EntityTrigger] IDurableEntityContext ctx)
         => ctx.DispatchAsync<ContainerInstanceStatusEntity>();
+
+        public async Task FillEmptyContainerGroupReference(ContainerInstanceReference containerReference)
+        {
+            var idx = Instances.FindIndex(instance => instance.Name == containerReference.Name);
+            Instances[idx] = containerReference;
+        }
+
+        private ContainerInstanceReference GetExistingInstanceByName(string instanceName) => Instances?.Find((i) => i.Name == instanceName);
     }
 
     public interface IContainerInstanceStatusEntity
     {
-        public Task<ContainerInstanceReference> GetNextAvailableInstanceAsync();
-
-        public Task AddInstanceIfNotExistsAsync(ContainerInstanceReference instance);
+        public Task<ContainerInstanceReference> GetNextAvailableContainerGroupAsync();
 
         public Task<List<ContainerInstanceReference>> GetInstancesAsync();
 
         public Task ReleaseContainerInstance(ContainerInstanceReference instance);
 
-        public Task<int> GetInstanceCountAsync();
+        public Task<int> GetContainerGroupCountAsync();
 
-        public Task ReserveInstanceCapacity();
+        public Task<ContainerInstanceReference> ReserveEmptyContainerGroupReference(string name);
 
         public Task Reset();
+
+        public Task FillEmptyContainerGroupReference(ContainerInstanceReference containerReference);
     }
 }

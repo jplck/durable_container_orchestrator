@@ -44,7 +44,7 @@ namespace ContainerRunnerFuncApp
 
         public static ContainerRunnerLib Instance => lazy.Value;
 
-        public async Task<ContainerInstanceReference> CreateContainerGroupAsync(string resourceGroupName, string containerGroupPrefix, string imageName, string startupCommand, ILogger log)
+        public async Task<ContainerInstanceReference> CreateContainerGroupAsync(string instanceName, string resourceGroupName, string imageName, string startupCommand, ILogger log)
         {
             IResourceGroup resourceGroup = null;
             try
@@ -63,20 +63,18 @@ namespace ContainerRunnerFuncApp
 
                 Console.WriteLine($"Resource group {resourceGroupName} created.");
 
-                var containerGroupName = SdkContext.RandomResourceName($"{containerGroupPrefix}-", 6);
-
                 var acrHost = Helpers.GetConfig()["ACR_Host"];
                 var acrUsername = Helpers.GetConfig()["ACR_Username"];
                 var acrPwd = Helpers.GetConfig()["ACR_Pwd"];
 
-                var containerGroup = await _azure.ContainerGroups.Define(containerGroupName)
+                var containerGroup = await _azure.ContainerGroups.Define(instanceName)
                     .WithRegion(resourceGroup.Region)
                     .WithExistingResourceGroup(resourceGroupName)
                     .WithLinux()
-                    //.WithPrivateImageRegistry(acrHost, acrUsername, acrPwd)
-                    .WithPublicImageRegistryOnly()
+                    .WithPrivateImageRegistry(acrHost, acrUsername, acrPwd)
+                    //.WithPublicImageRegistryOnly()
                     .WithoutVolume()
-                    .DefineContainerInstance($"{containerGroupName}")
+                    .DefineContainerInstance($"{instanceName}")
                         .WithImage(imageName)
                         .WithExternalTcpPort(80)
                         .WithCpuCoreCount(1.0)
@@ -84,7 +82,7 @@ namespace ContainerRunnerFuncApp
                         .WithEnvironmentVariable("TestVar", "test")
                         //.WithStartingCommandLine(startupCommand)
                         .Attach()
-                    .WithDnsPrefix(containerGroupName)
+                    .WithDnsPrefix(instanceName)
                     .WithRestartPolicy(ContainerGroupRestartPolicy.Never)
                     .WithSystemAssignedManagedServiceIdentity()
                     .CreateAsync();
@@ -94,11 +92,12 @@ namespace ContainerRunnerFuncApp
                 return new ContainerInstanceReference()
                 {
                     ResourceGroupName = resourceGroup.Name,
-                    Name = containerGroupName,
+                    Name = instanceName,
                     Available = false,
                     Fqdn = containerGroup.Fqdn,
                     InstanceId = containerGroup.Id,
                     StartupCommand = startupCommand,
+                    Created = true,
                     Ports = new List<int>()
                     {
                         80

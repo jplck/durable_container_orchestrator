@@ -8,12 +8,12 @@ namespace ContainerRunnerFuncApp.Activities
     public static class SetupContainerActivity
     {
         [FunctionName("Container_Setup_Activity")]
-        public static async Task<ContainerInstanceReference> SetupContainerActivityAsync([ActivityTrigger] IDurableActivityContext ctx, ILogger log)
+        public static async Task<(bool, ContainerInstanceReference)> SetupContainerActivityAsync([ActivityTrigger] IDurableActivityContext ctx, ILogger log)
         {
 
             var (instanceReference, commandLine) = ctx.GetInput<(ContainerInstanceReference, string)>();
 
-            if (instanceReference != null)
+            if (instanceReference.Created)
             {
                 log.LogWarning("Restarting available instance.");
                 await ContainerRunnerLib.Instance.StartContainerGroupAsync(instanceReference, log);
@@ -22,15 +22,15 @@ namespace ContainerRunnerFuncApp.Activities
             {
                 log.LogWarning("No previous container instances available. Creating new one...");
                 var containerGroup = await ContainerRunnerLib.Instance
-                                       .CreateContainerGroupAsync("aci-demo-rg",
-                                                                  "aci-demo",
-                                                                  "mcr.microsoft.com/azuredocs/aci-helloworld",
+                                       .CreateContainerGroupAsync(instanceReference.Name,
+                                                                  "aci-demo-rg",
+                                                                  "acrdemo123456.azurecr.io/demo-image:0.1",
                                                                   commandLine,
                                                                   log);
-                return containerGroup;
+                return (true, containerGroup);
             }
 
-            return instanceReference;
+            return (false, instanceReference);
         }
     }
 }
