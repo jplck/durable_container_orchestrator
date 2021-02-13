@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ContainerRunnerFuncApp.Activities;
+using ContainerRunnerFuncApp.Exceptions;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using Microsoft.Rest.Azure;
 
 namespace ContainerRunnerFuncApp
 {
@@ -32,7 +34,7 @@ namespace ContainerRunnerFuncApp
             var retryOptions = new RetryOptions(TimeSpan.FromSeconds(15), 15)
             {
                 BackoffCoefficient = 1.5,
-                Handle = ex => ex.ToString() == "ContainerInstanceExceedingLimitsException"
+                Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
             };
 
             events.ForEach(delegate (string eventPayload)
@@ -79,7 +81,12 @@ namespace ContainerRunnerFuncApp
                 }
 
                 bool isNew;
-                (isNew, instanceRef) = await context.CallActivityAsync<(bool, ContainerInstanceReference)>("Container_Setup_Activity", (instance, string.Empty));
+                (isNew, instanceRef) = await context.CallActivityWithRetryAsync<(bool, ContainerInstanceReference)>("Container_Setup_Activity", new RetryOptions(TimeSpan.FromSeconds(15), 5)
+                {
+                    BackoffCoefficient = 1.5
+                }, 
+                (instance, string.Empty));
+
                 if (isNew)
                 {
                     using (await context.LockAsync(entityId))
@@ -89,16 +96,17 @@ namespace ContainerRunnerFuncApp
                 }
 
                 //do work with instance
-                var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", instanceRef);
+                var externalEventTriggerEventName = "WorkDoneEvent";
+                var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", (context.InstanceId, externalEventTriggerEventName, instanceRef));
 
-                var workDoneEvent = await context.WaitForExternalEvent<ContainerResponse>("Done");
+                var workDoneEvent = await context.WaitForExternalEvent<ContainerResponse>(externalEventTriggerEventName);
 
                 if (workDoneEvent.Success)
                 {
                     log.LogInformation("Work done successfully");
                 } else
                 {
-                    //trigger a retry.
+                    throw new ContainerInstanceCommandExecutionFailedException();
                 }
 
                 await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
@@ -106,21 +114,25 @@ namespace ContainerRunnerFuncApp
 
                 return true;
             }
-            catch (ContainerInstanceExceedingLimitsException exeedsLimitsException)
-            {
-                log.LogWarning("Currently exeeding container limits. Automatic retry enabled.");
-                throw exeedsLimitsException;
-            }
             catch (Exception ex)
             {
-                //If above failed and we have an instance running, force shut it down.
-                if (instanceRef != null)
+                var rethrowEx = ex;
+                if (ex is ContainerInstanceCommandExecutionFailedException)
                 {
-                    log.LogError("Shutting down rogue container instance.");
-                    await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
-                    await entity.ReleaseContainerInstance(instanceRef);
+                    log.LogWarning("Container was unable to execute tasks. Triggering retry.");
+                    rethrowEx = new TriggerRetryException();
+                } 
+                else if (ex is ContainerInstanceExceedingLimitsException)
+                {
+                    log.LogWarning("Currently exeeding container limits. Automatic retry enabled.");
+                    //Throw immediatly as there is not active contaienr to shutdown.
+                    throw new TriggerRetryException();
                 }
-                throw ex;
+
+                log.LogWarning("Shutting down container instance due to error or retry.");
+                await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
+                await entity.ReleaseContainerInstance(instanceRef);
+                throw rethrowEx;
             }
         }
     }

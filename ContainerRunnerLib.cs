@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Management.ContainerInstance.Fluent;
+﻿using ContainerRunnerFuncApp.Exceptions;
+using Microsoft.Azure.Management.ContainerInstance.Fluent;
 using Microsoft.Azure.Management.ContainerInstance.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -14,16 +15,6 @@ using System.Threading.Tasks;
 
 namespace ContainerRunnerFuncApp
 {
-    class ContainerInstanceExceedingLimitsException : Exception
-    {
-        public ContainerInstanceExceedingLimitsException() { }
-    }
-
-    class ContainerInstanceCommandExecutionFailedException : Exception
-    {
-        public ContainerInstanceCommandExecutionFailedException() { }
-    }
-
     class ContainerRunnerLib
     {
         private static IAzure _azure;
@@ -113,7 +104,11 @@ namespace ContainerRunnerFuncApp
        
         public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
         {
-            var url = $"https://{containerInstance.Fqdn}{path}";
+            #if (DEBUG)
+                var url = $"http://localhost:5001{path}";
+            #else
+                var url = $"https://{containerInstance.Fqdn}{path}";
+            #endif
 
             try
             {
@@ -164,21 +159,13 @@ namespace ContainerRunnerFuncApp
 
         public async Task StopContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
         {
-            var aci = await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
+            var aci = await GetContainerGroupAsync(containerInstance, log);
             await aci.StopAsync();
         }
 
-        public async Task<IContainerExecResponse> ExecuteContainerCommand(ContainerInstanceReference containerInstance, string command, ILogger log)
+        public async Task<IContainerGroup> GetContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
         {
-            try
-            {
-                var aci = await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
-                return await aci.ExecuteCommandAsync(containerInstance.Name, command, 0, 0);
-            }
-            catch (Exception)
-            {
-                throw new ContainerInstanceCommandExecutionFailedException();
-            }
+            return await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
         }
     }
 }
