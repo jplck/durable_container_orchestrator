@@ -70,7 +70,6 @@ namespace ContainerRunnerFuncApp
                         .WithExternalTcpPort(80)
                         .WithCpuCoreCount(1.0)
                         .WithMemorySizeInGB(1.0)
-                        .WithEnvironmentVariable("TestVar", "test")
                         //.WithStartingCommandLine(startupCommand)
                         .Attach()
                     .WithDnsPrefix(instanceName)
