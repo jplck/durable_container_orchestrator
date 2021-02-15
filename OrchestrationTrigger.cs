@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.Net.Http;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ContainerRunnerFuncApp
 {
@@ -34,13 +35,15 @@ namespace ContainerRunnerFuncApp
         }
 
         [FunctionName("Orchestration_Reset_Trigger_Func_HTTP")]
-        public static async Task<HttpResponseMessage> TriggerResetRun(
+        public static async Task<IActionResult> TriggerResetRun(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter,
+            [DurableClient] IDurableEntityClient entityClient,
             ILogger log)
         {
-            string instanceId = await starter.StartNewAsync("ACI_Reset_Orchestrator_Func", null);
-            return starter.CreateCheckStatusResponse(req, instanceId);
+            log.LogInformation("Start entity reset.");
+            var entityId = new EntityId("ContainerInstanceStatusEntity", "ContainerInstanceStatusEntity");
+            await entityClient.SignalEntityAsync(entityId, "Reset");
+            return new AcceptedResult();
         }
     }
 }
