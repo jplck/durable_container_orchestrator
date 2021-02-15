@@ -31,11 +31,15 @@ namespace ContainerRunnerFuncApp.Activities
                 }
                 else
                 {
+                    var acrHost = Helpers.GetConfig()["ACR_HOST"];
+                    var acrImageName = Helpers.GetConfig()["ACR_IMG_NAME"];
+                    var resourceGroupName = Helpers.GetConfig()["ACI_Resource_Group"];
+
                     log.LogWarning("No previous container instances available. Creating new one...");
                     var containerGroup = await ContainerRunnerLib.Instance
                                            .CreateContainerGroupAsync(instanceReference.Name,
-                                                                      "aci-demo-rg",
-                                                                      "acrdemo123456.azurecr.io/demo-image:0.1",
+                                                                      resourceGroupName,
+                                                                      $"{acrHost}/{acrImageName}",
                                                                       commandLine,
                                                                       log);
                     return (true, containerGroup);
