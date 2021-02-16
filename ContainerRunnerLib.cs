@@ -101,12 +101,12 @@ namespace ContainerRunnerFuncApp
             }
         }
        
-        public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
+        public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, int port, string content, ILogger log)
         {
             #if (DEBUG)
                 var url = $"http://localhost:5001{path}";
             #else
-                var url = $"https://{containerInstance.Fqdn}{path}";
+                var url = $"https://{containerInstance.Fqdn}:{port}{path}";
             #endif
 
             try
