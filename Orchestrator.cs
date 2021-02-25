@@ -18,7 +18,7 @@ namespace ContainerRunnerFuncApp
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger log)
         {
-            var events = context.GetInput<List<string>>();
+            var events = context.GetInput<List<EventGridEventPayload>>();
             List<Task> orchestrations = new List<Task>();
 
             var retryOptions = new RetryOptions(TimeSpan.FromSeconds(15), 15)
@@ -27,7 +27,7 @@ namespace ContainerRunnerFuncApp
                 Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
             };
 
-            events.ForEach(delegate (string eventPayload)
+            events.ForEach(delegate (EventGridEventPayload eventPayload)
             {
                 orchestrations.Add(context.CallSubOrchestratorWithRetryAsync<bool>("ACI_Sub_Orchestrator_Func", retryOptions, eventPayload));
             });
@@ -46,6 +46,8 @@ namespace ContainerRunnerFuncApp
 
             try
             {
+                var blobPayload = context.GetInput<EventGridEventPayload>();
+
                 var containerGroupPrefix = Helpers.GetConfig()["ContainerGroupPrefix"] ?? "aci-container-group";
 
                 var containerGroupName = SdkContext.RandomResourceName($"{containerGroupPrefix}-", 6);
@@ -87,7 +89,7 @@ namespace ContainerRunnerFuncApp
 
                 //do work with instance
                 var externalEventTriggerEventName = "WorkDoneEvent";
-                var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", (context.InstanceId, externalEventTriggerEventName, instanceRef));
+                var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", (context.InstanceId, externalEventTriggerEventName, blobPayload.Data.Url, instanceRef));
 
                 var workDoneEvent = await context.WaitForExternalEvent<ContainerResponse>(externalEventTriggerEventName);
 

@@ -31,9 +31,9 @@ namespace ContainerRunnerFuncApp.Activities
     public static class ExecuteWorkInContainerActivity
     {
         [FunctionName("Container_StartWork_Activity")]
-        public static async Task<string> StartWorkContainerActivityAsync([ActivityTrigger] (string, string, ContainerInstanceReference) input, ILogger log)
+        public static async Task<string> StartWorkContainerActivityAsync([ActivityTrigger] (string, string, string, ContainerInstanceReference) input, ILogger log)
         {
-            var (instanceId, externalEventTriggerKeyword, containerInstance) = input;
+            var (instanceId, externalEventTriggerKeyword, blobUri, containerInstance) = input;
 
             var host = Helpers.GetConfig()["Host"];
             var functionKey = Helpers.GetConfig()["FunctionKey"];
@@ -45,7 +45,7 @@ namespace ContainerRunnerFuncApp.Activities
 
             var result = await ContainerRunnerLib.Instance.SendRequestToContainerInstance(containerInstance, path, port, JsonConvert.SerializeObject(new ContainerRequest
             {
-                BlobUri = "dummy",
+                BlobUri = blobUri,
                 ExternalTriggerCallbackUrl = $"{host}/runtime/webhooks/durabletask/instances/{instanceId}/raiseEvent/{externalEventTriggerKeyword}{functionKeyString}"
             }), log);
 
