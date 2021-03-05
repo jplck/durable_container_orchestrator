@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ContainerRunnerFuncApp.Activities;
 using ContainerRunnerFuncApp.Exceptions;
+using ContainerRunnerFuncApp.Model;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
