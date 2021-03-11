@@ -54,9 +54,10 @@ namespace ContainerRunnerFuncApp
             Instances.Clear();
         }
 
-        public async Task ReleaseContainerInstance(ContainerInstanceReference instance)
+        public async Task ReleaseContainerInstance(ContainerInstanceReference containerInstance)
         {
-            var foundInstance = GetExistingInstanceByName(instance.Name);
+            _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
+            var foundInstance = GetExistingInstanceByName(containerInstance.Name);
             foundInstance.Available = true;
         }
 

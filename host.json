@@ -7,5 +7,12 @@
                 "isEnabled": true
             }
         }
-    }
+    },
+    "extensions": {
+        "durableTask": {
+          "storageProvider": {
+            "connectionStringName": "DurableFuncStorageConnection"
+          }
+        }
+      }
 }

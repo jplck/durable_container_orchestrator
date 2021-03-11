@@ -144,11 +144,13 @@ namespace ContainerRunnerFuncApp
 
         public async Task DeleteContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
         {
+            _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
             await _azure.ContainerGroups.DeleteByIdAsync(containerInstance.InstanceId);
         }
 
         public async Task StartContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
         {
+            _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
             log.LogInformation("(Re)Starting container instance from exsiting registration...");
 
             await _azure.ContainerGroups.StartAsync(containerInstance.ResourceGroupName, containerInstance.Name);
@@ -158,12 +160,14 @@ namespace ContainerRunnerFuncApp
 
         public async Task StopContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
         {
+            _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
             var aci = await GetContainerGroupAsync(containerInstance, log);
             await aci.StopAsync();
         }
 
         public async Task<IContainerGroup> GetContainerGroupAsync(ContainerInstanceReference containerInstance, ILogger log)
         {
+            _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
             return await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
         }
     }

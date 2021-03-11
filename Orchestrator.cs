@@ -8,7 +8,6 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
-using Microsoft.Rest.Azure;
 
 namespace ContainerRunnerFuncApp
 {
@@ -52,8 +51,6 @@ namespace ContainerRunnerFuncApp
                 var containerGroupPrefix = Helpers.GetConfig()["ContainerGroupPrefix"] ?? "aci-container-group";
 
                 var containerGroupName = SdkContext.RandomResourceName($"{containerGroupPrefix}-", 6);
-
-                var eventPayload = context.GetInput<string>();
 
                 var instanceCount = 0;
                 ContainerInstanceReference instance = null;
@@ -122,9 +119,12 @@ namespace ContainerRunnerFuncApp
                     throw new TriggerRetryException();
                 }
 
-                log.LogWarning("Shutting down container instance due to error or retry.");
-                await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
-                await entity.ReleaseContainerInstance(instanceRef);
+                if (instanceRef != null) {
+                    log.LogWarning("Shutting down container instance due to error or retry.");
+                    await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
+                    await entity.ReleaseContainerInstance(instanceRef);
+                }
+
                 throw rethrowEx;
             }
         }
