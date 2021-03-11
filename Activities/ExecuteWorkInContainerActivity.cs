@@ -2,10 +2,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using System.Net.WebSockets;
 using System;
-using System.Threading;
-using System.Net;
+using ContainerRunnerFuncApp.Model;
 using Newtonsoft.Json;
 
 namespace ContainerRunnerFuncApp.Activities
@@ -38,7 +36,13 @@ namespace ContainerRunnerFuncApp.Activities
             var host = Helpers.GetConfig()["Host"];
             var functionKey = Helpers.GetConfig()["FunctionKey"];
             var path = Helpers.GetConfig()["ACI_Container_Endpoint_Path"];
-            var port = int.Parse(Helpers.GetConfig()["ACI_Container_Endpoint_Port"]);
+            var portString = Helpers.GetConfig()["ACI_Container_Endpoint_Port"];
+
+            _ = host ?? throw new ArgumentNullException("Host cannot be null");
+            _ = path ?? throw new ArgumentNullException("ACI Path cannot be null");
+            _ = portString ?? throw new ArgumentNullException("Port cannot be null");
+
+            var port = int.Parse(portString);
             var functionKeyString = string.IsNullOrEmpty(functionKey) ? string.Empty : $"?code={functionKey}";
 
             log.LogWarning($"Doing some work on instance {containerInstance.Name}.");

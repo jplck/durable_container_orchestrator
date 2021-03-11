@@ -3,57 +3,24 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
+using ContainerRunnerFuncApp.Model;
 using System.Threading.Tasks;
 
 namespace ContainerRunnerFuncApp
 {
-    class ContainerInstanceStatusEntityException : Exception
-    {
-        public ContainerInstanceStatusEntityException() { }
-    }
-
-    public class ContainerInstanceReference
-    {
-        [JsonProperty("instanceId")]
-        public string InstanceId { get; set; }
-
-        [JsonProperty("available")]
-        [DefaultValue(false)]
-        public bool Available { get; set; }
-
-        [JsonProperty("fqdn")]
-        public string Fqdn { get; set; }
-
-        [JsonProperty("ports")]
-        public List<int> Ports { get; set; }
-
-        [JsonProperty("resourceGroupName")]
-        public string ResourceGroupName { get; set; }
-
-        [JsonProperty("name")]
-        public string Name { get; set; }
-
-        [JsonProperty("startupCommand")]
-        public string StartupCommand { get; set; }
-
-        [JsonProperty("created")]
-        [DefaultValue(false)]
-        public bool Created { get; set; }
-    }
-
     [JsonObject(MemberSerialization.OptIn)]
     class ContainerInstanceStatusEntity : IContainerInstanceStatusEntity
     {
         [JsonProperty("instances")]
         private List<ContainerInstanceReference> Instances { get; set; } = new List<ContainerInstanceReference>();
 
+        #pragma warning disable CS1998
         public async Task Reset()
         {
             Instances.Clear();
         }
 
+        #pragma warning disable CS1998
         public async Task ReleaseContainerInstance(ContainerInstanceReference containerInstance)
         {
             _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
@@ -61,6 +28,7 @@ namespace ContainerRunnerFuncApp
             foundInstance.Available = true;
         }
 
+        #pragma warning disable CS1998
         public async Task<ContainerInstanceReference> ReserveEmptyContainerGroupReference(string name)
         {
             var instance = new ContainerInstanceReference()
@@ -87,6 +55,7 @@ namespace ContainerRunnerFuncApp
         public static Task Run([EntityTrigger] IDurableEntityContext ctx)
         => ctx.DispatchAsync<ContainerInstanceStatusEntity>();
 
+        #pragma warning disable CS1998
         public async Task FillEmptyContainerGroupReference(ContainerInstanceReference containerReference)
         {
             var idx = Instances.FindIndex(instance => instance.Name == containerReference.Name);
@@ -98,18 +67,18 @@ namespace ContainerRunnerFuncApp
 
     public interface IContainerInstanceStatusEntity
     {
-        public Task<ContainerInstanceReference> GetNextAvailableContainerGroupAsync();
+        Task<ContainerInstanceReference> GetNextAvailableContainerGroupAsync();
 
-        public Task<List<ContainerInstanceReference>> GetInstancesAsync();
+        Task<List<ContainerInstanceReference>> GetInstancesAsync();
 
-        public Task ReleaseContainerInstance(ContainerInstanceReference instance);
+        Task ReleaseContainerInstance(ContainerInstanceReference instance);
 
-        public Task<int> GetContainerGroupCountAsync();
+        Task<int> GetContainerGroupCountAsync();
 
-        public Task<ContainerInstanceReference> ReserveEmptyContainerGroupReference(string name);
+        Task<ContainerInstanceReference> ReserveEmptyContainerGroupReference(string name);
 
-        public Task Reset();
+        Task Reset();
 
-        public Task FillEmptyContainerGroupReference(ContainerInstanceReference containerReference);
+        Task FillEmptyContainerGroupReference(ContainerInstanceReference containerReference);
     }
 }

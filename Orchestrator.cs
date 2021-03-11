@@ -64,7 +64,10 @@ namespace ContainerRunnerFuncApp
                         instanceCount = await entity.GetContainerGroupCountAsync();
                         var maxInstances = int.Parse(Helpers.GetConfig()["Max_Number_Of_Instances"]);
 
-                        if (instanceCount >= maxInstances) { throw new ContainerInstanceExceedingLimitsException(); }
+                        if (instanceCount >= maxInstances) 
+                        { 
+                            throw new TriggerRetryException("Maximum number of parallel container instances reached. Triggering retry."); 
+                        }
 
                         instance = await entity.ReserveEmptyContainerGroupReference(containerGroupName);
                     }
@@ -73,7 +76,8 @@ namespace ContainerRunnerFuncApp
                 bool isNew;
                 (isNew, instanceRef) = await context.CallActivityWithRetryAsync<(bool, ContainerInstanceReference)>("Container_Setup_Activity", new RetryOptions(TimeSpan.FromSeconds(15), 5)
                 {
-                    BackoffCoefficient = 1.5
+                    BackoffCoefficient = 1.5,
+                    Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
                 }, 
                 (instance, string.Empty));
 
@@ -86,18 +90,14 @@ namespace ContainerRunnerFuncApp
                 }
 
                 //do work with instance
-                var externalEventTriggerEventName = "WorkDoneEvent";
+                var externalEventTriggerEventName = Helpers.GetConfig()["Work_Done_Trigger_Keyword"];
                 var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", (context.InstanceId, externalEventTriggerEventName, blobPayload.Data.Url, instanceRef));
 
                 var workDoneEvent = await context.WaitForExternalEvent<ContainerResponse>(externalEventTriggerEventName);
 
-                if (workDoneEvent.Success)
-                {
-                    log.LogInformation("Work done successfully");
-                } else
-                {
-                    throw new ContainerInstanceCommandExecutionFailedException();
-                }
+                if (!workDoneEvent.Success) { throw new TriggerRetryException(); }
+ 
+                log.LogInformation("Work done successfully");
 
                 await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
                 await entity.ReleaseContainerInstance(instanceRef);
@@ -107,17 +107,11 @@ namespace ContainerRunnerFuncApp
             catch (Exception ex)
             {
                 var rethrowEx = ex;
-                if (ex is ContainerInstanceCommandExecutionFailedException)
+                if (ex is TriggerRetryException)
                 {
                     log.LogWarning("Container was unable to execute tasks. Triggering retry.");
-                    rethrowEx = new TriggerRetryException();
+                    throw ex;
                 } 
-                else if (ex is ContainerInstanceExceedingLimitsException)
-                {
-                    log.LogWarning("Currently exeeding container limits. Automatic retry enabled.");
-                    //Throw immediatly as there is not active contaienr to shutdown.
-                    throw new TriggerRetryException();
-                }
 
                 if (instanceRef != null) {
                     log.LogWarning("Shutting down container instance due to error or retry.");

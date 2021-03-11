@@ -3,7 +3,6 @@ using Microsoft.Azure.Management.ContainerInstance.Fluent;
 using Microsoft.Azure.Management.ContainerInstance.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,6 +11,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using ContainerRunnerFuncApp.Model;
 
 namespace ContainerRunnerFuncApp
 {
@@ -136,9 +136,9 @@ namespace ContainerRunnerFuncApp
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw new ContainerInstanceCommandExecutionFailedException();
+                throw new UnableToRecoverException(ex.Message);
             }
         }
 
