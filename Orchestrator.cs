@@ -74,7 +74,8 @@ namespace ContainerRunnerFuncApp
                 }
 
                 bool isNew;
-                (isNew, instanceRef) = await context.CallActivityWithRetryAsync<(bool, ContainerInstanceReference)>("Container_Setup_Activity", new RetryOptions(TimeSpan.FromSeconds(15), 5)
+                (isNew, instanceRef) = await context.CallActivityWithRetryAsync<(bool, ContainerInstanceReference)>("Container_Setup_Activity", 
+                new RetryOptions(TimeSpan.FromSeconds(15), 5)
                 {
                     BackoffCoefficient = 1.5,
                     Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
@@ -91,7 +92,12 @@ namespace ContainerRunnerFuncApp
 
                 //do work with instance
                 var externalEventTriggerEventName = Helpers.GetConfig()["Work_Done_Trigger_Keyword"];
-                var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", (context.InstanceId, externalEventTriggerEventName, blobPayload.Data.Url, instanceRef));
+
+                var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", 
+                                                                       (context.InstanceId, 
+                                                                        externalEventTriggerEventName, 
+                                                                        blobPayload.Data.Url, 
+                                                                        instanceRef));
 
                 var workDoneEvent = await context.WaitForExternalEvent<ContainerResponse>(externalEventTriggerEventName);
 
@@ -114,7 +120,7 @@ namespace ContainerRunnerFuncApp
                 } 
 
                 if (instanceRef != null) {
-                    log.LogWarning("Shutting down container instance due to error or retry.");
+                    log.LogWarning("Shutting down container instance due to unrecoverable error.");
                     await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
                     await entity.ReleaseContainerInstance(instanceRef);
                 }
