@@ -1,18 +1,21 @@
 {
-    "version": "2.0",
-    "logging": {
-        "applicationInsights": {
-            "samplingExcludedTypes": "Request",
-            "samplingSettings": {
-                "isEnabled": true
-            }
-        }
-    },
-    "extensions": {
-        "durableTask": {
-          "storageProvider": {
-            "connectionStringName": "DurableFuncStorageConnection"
-          }
-        }
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
       }
+    },
+    "logLevel": {
+      "ContainerRunnerFuncApp": "Information"
+    }
+  },
+  "extensions": {
+    "durableTask": {
+      "storageProvider": {
+        "connectionStringName": "DurableFuncStorageConnection"
+      }
+    }
+  }
 }

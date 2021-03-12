@@ -5,26 +5,39 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using ContainerRunnerFuncApp.Model;
+using Microsoft.Extensions.Configuration;
 
 namespace ContainerRunnerFuncApp.Activities
 {
-    public static class SetupContainerActivity
+    public class SetupContainerActivity
     {
+        private readonly IConfiguration _config;
+        private readonly ILogger _log;
+
+        private readonly ContainerRunnerLib _containerRunner;
+
+        public SetupContainerActivity(ILogger<SetupContainerActivity> logger, IConfiguration configuration, ContainerRunnerLib containerRunner)
+        {
+            _log = logger;
+            _config = configuration;
+            _containerRunner = containerRunner;
+        }
+
         [FunctionName("Container_Setup_Activity")]
-        public static async Task<(bool, ContainerInstanceReference)> SetupContainerActivityAsync([ActivityTrigger] IDurableActivityContext ctx, ILogger log)
+        public async Task<(bool, ContainerInstanceReference)> SetupContainerActivityAsync([ActivityTrigger] IDurableActivityContext ctx)
         {
 
             var (instanceReference, commandLine) = ctx.GetInput<(ContainerInstanceReference, string)>();
 
             try
             {
-                if ((instanceReference.Created && !await RestartExistingContainer(instanceReference, log)) || !instanceReference.Created) {
-                    var containerGroup = await CreateNewContainer(instanceReference, commandLine, log);
-                    log.LogInformation("Created new container.");
+                if ((instanceReference.Created && !await RestartExistingContainer(instanceReference)) || !instanceReference.Created) {
+                    var containerGroup = await CreateNewContainer(instanceReference, commandLine);
+                    _log.LogInformation("Created new container.");
                     return (true, containerGroup);
                 }
 
-                log.LogInformation("Restarted container successfully.");
+                _log.LogInformation("Restarted container successfully.");
                 return (false, instanceReference);
 
             }
@@ -34,35 +47,37 @@ namespace ContainerRunnerFuncApp.Activities
                     throw new UnableToRecoverException(ex.Message);
                 }
 
-                log.LogError("Unable to create/restart container instance");
+                _log.LogError("Unable to create/restart container instance");
                 throw new TriggerRetryException("Unable to create/restart container. Try again later.");
             }
         }
 
-        private static async Task<ContainerInstanceReference> CreateNewContainer(ContainerInstanceReference instanceReference, string commandLine, ILogger log)
+        private async Task<ContainerInstanceReference> CreateNewContainer(
+            ContainerInstanceReference instanceReference,
+            string commandLine
+        )
         {
-            var acrHost = Helpers.GetConfig()["ACR_HOST"];
-            var acrImageName = Helpers.GetConfig()["ACR_IMG_NAME"];
-            var resourceGroupName = Helpers.GetConfig()["ACI_Resource_Group"];
+            var acrHost = _config["ACR_HOST"];
+            var acrImageName = _config["ACR_IMG_NAME"];
+            var resourceGroupName = _config["ACI_Resource_Group"];
 
             _ = acrHost ?? throw new ArgumentNullException("ACR Host cannot be null");
             _ = acrImageName ?? throw new ArgumentNullException("ACR Image Name cannot be null");
             _ = resourceGroupName ?? throw new ArgumentNullException("Resource Group name cannot be null");
 
-            log.LogWarning("No previous container instances available. Creating new one...");
-            var containerGroup = await ContainerRunnerLib.Instance
-                                   .CreateContainerGroupAsync(instanceReference.Name,
-                                                              resourceGroupName,
-                                                              $"{acrHost}/{acrImageName}",
-                                                              commandLine,
-                                                              log);
+            _log.LogWarning("No previous container instances available. Creating new one...");
+            var containerGroup = await _containerRunner.CreateContainerGroupAsync(instanceReference.Name,
+                                                                                  resourceGroupName,
+                                                                                  $"{acrHost}/{acrImageName}",
+                                                                                  commandLine,
+                                                                                  _log);
             return containerGroup;
         }
 
-        private static async Task<bool> RestartExistingContainer(ContainerInstanceReference instanceReference, ILogger log)
+        private async Task<bool> RestartExistingContainer(ContainerInstanceReference instanceReference)
         {
-            log.LogWarning("Restarting available instance.");
-            var group = await ContainerRunnerLib.Instance.GetContainerGroupAsync(instanceReference, log);
+            _log.LogWarning("Restarting available instance.");
+            var group = await _containerRunner.GetContainerGroupAsync(instanceReference, _log);
 
             if (group == null) {
                 return false;
@@ -70,10 +85,10 @@ namespace ContainerRunnerFuncApp.Activities
 
             if (group.State != "Stopped")
             {
-                log.LogWarning("Force stopping container instance.");
+                _log.LogWarning("Force stopping container instance.");
                 await group.StopAsync();
             }
-            await ContainerRunnerLib.Instance.StartContainerGroupAsync(instanceReference, log);
+            await _containerRunner.StartContainerGroupAsync(instanceReference, _log);
             return true;
         }
     }

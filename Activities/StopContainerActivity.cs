@@ -6,12 +6,21 @@ using ContainerRunnerFuncApp.Model;
 
 namespace ContainerRunnerFuncApp.Activities
 {
-    public static class StopContainerActivity
+    public class StopContainerActivity
     {
-        [FunctionName("Container_Stop_Activity")]
-        public static async Task StopContainerActivityAsync([ActivityTrigger] ContainerInstanceReference containerInstance, ILogger log)
+        private readonly ILogger _log;
+        private readonly ContainerRunnerLib _containerRunner;
+
+        public StopContainerActivity(ContainerRunnerLib containerRunner, ILogger<StopContainerActivity> log)
         {
-            await ContainerRunnerLib.Instance.StopContainerGroupAsync(containerInstance, log);
+            _containerRunner = containerRunner;
+            _log = log;
+        }
+
+        [FunctionName("Container_Stop_Activity")]
+        public async Task StopContainerActivityAsync([ActivityTrigger] ContainerInstanceReference containerInstance)
+        {
+            await _containerRunner.StopContainerGroupAsync(containerInstance, _log);
         }
     }
 }
