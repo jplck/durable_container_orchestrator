@@ -36,18 +36,15 @@ namespace ContainerRunnerFuncApp.Activities
             var host = Helpers.GetConfig()["Host"];
             var functionKey = Helpers.GetConfig()["FunctionKey"];
             var path = Helpers.GetConfig()["ACI_Container_Endpoint_Path"];
-            var portString = Helpers.GetConfig()["ACI_Container_Endpoint_Port"];
 
             _ = host ?? throw new ArgumentNullException("Host cannot be null");
             _ = path ?? throw new ArgumentNullException("ACI Path cannot be null");
-            _ = portString ?? throw new ArgumentNullException("Port cannot be null");
 
-            var port = int.Parse(portString);
             var functionKeyString = string.IsNullOrEmpty(functionKey) ? string.Empty : $"?code={functionKey}";
 
             log.LogWarning($"Doing some work on instance {containerInstance.Name}.");
 
-            var result = await ContainerRunnerLib.Instance.SendRequestToContainerInstance(containerInstance, path, port, JsonConvert.SerializeObject(new ContainerRequest
+            var result = await ContainerRunnerLib.Instance.SendRequestToContainerInstance(containerInstance, path, JsonConvert.SerializeObject(new ContainerRequest
             {
                 BlobUri = blobUri,
                 ExternalTriggerCallbackUrl = $"{host}/runtime/webhooks/durabletask/instances/{instanceId}/raiseEvent/{externalEventTriggerKeyword}{functionKeyString}"
