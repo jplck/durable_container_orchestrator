@@ -3,6 +3,7 @@ using Microsoft.Azure.Management.ContainerInstance.Fluent;
 using Microsoft.Azure.Management.ContainerInstance.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Extensions.Logging;
 using System;
@@ -20,14 +21,12 @@ namespace ContainerRunnerFuncApp
 
         public ContainerRunnerLib()
         {
-
             #if (DEBUG)
-                        _azure = Azure.Authenticate("./credentials.json").WithDefaultSubscription();
+                    _azure = Azure.Authenticate("./credentials.json").WithDefaultSubscription();
             #else
-                        var credentials = new AzureCredentialsFactory().FromSystemAssignedManagedServiceIdentity(MSIResourceType.AppService, AzureEnvironment.AzureGlobalCloud);
-                        _azure = Azure.Authenticate(credentials).WithDefaultSubscription();
+                    var credentials = new AzureCredentialsFactory().FromSystemAssignedManagedServiceIdentity(MSIResourceType.AppService, AzureEnvironment.AzureGlobalCloud);
+                    _azure = Azure.Authenticate(credentials).WithDefaultSubscription();
             #endif
-
         }
 
         public async Task<ContainerInstanceReference> CreateContainerGroupAsync(
