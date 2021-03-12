@@ -58,6 +58,12 @@ namespace ContainerRunnerFuncApp
                 var acrUsername = Helpers.GetConfig()["ACR_Username"];
                 var acrPwd = Helpers.GetConfig()["ACR_Pwd"];
 
+                var containerPortConfig = Helpers.GetConfig()["ACI_Container_Endpoint_Port"];
+
+                _ = containerPortConfig ?? throw new ArgumentNullException("ACI port cannot be null");
+
+                var containerPort = int.Parse(containerPortConfig);
+
                 var containerGroup = await _azure.ContainerGroups.Define(instanceName)
                     .WithRegion(resourceGroup.Region)
                     .WithExistingResourceGroup(resourceGroupName)
@@ -67,7 +73,7 @@ namespace ContainerRunnerFuncApp
                     .WithoutVolume()
                     .DefineContainerInstance($"{instanceName}")
                         .WithImage(imageName)
-                        .WithExternalTcpPort(80)
+                        .WithExternalTcpPort(containerPort)
                         .WithCpuCoreCount(1.0)
                         .WithMemorySizeInGB(1.0)
                         //.WithStartingCommandLine(startupCommand)
@@ -88,10 +94,7 @@ namespace ContainerRunnerFuncApp
                     InstanceId = containerGroup.Id,
                     StartupCommand = startupCommand,
                     Created = true,
-                    Ports = new List<int>()
-                    {
-                        80
-                    }
+                    ExternalPort = containerPort
                 };
             }
             catch (Exception ex)
@@ -101,13 +104,10 @@ namespace ContainerRunnerFuncApp
             }
         }
        
-        public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, int port, string content, ILogger log)
+        public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
         {
-            #if (DEBUG)
-                var url = $"http://localhost:5001{path}";
-            #else
-                var url = $"https://{containerInstance.Fqdn}:{port}{path}";
-            #endif
+            
+            var url = $"https://{containerInstance.Fqdn}:{containerInstance.ExternalPort}{path}";
 
             try
             {

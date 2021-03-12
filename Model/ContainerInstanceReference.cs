@@ -17,7 +17,7 @@ namespace ContainerRunnerFuncApp.Model
         public string Fqdn { get; set; }
 
         [JsonProperty("ports")]
-        public List<int> Ports { get; set; }
+        public int ExternalPort { get; set; }
 
         [JsonProperty("resourceGroupName")]
         public string ResourceGroupName { get; set; }
