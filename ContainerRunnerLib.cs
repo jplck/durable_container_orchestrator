@@ -6,7 +6,6 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -15,13 +14,11 @@ using ContainerRunnerFuncApp.Model;
 
 namespace ContainerRunnerFuncApp
 {
-    class ContainerRunnerLib
+    public class ContainerRunnerLib
     {
         private static IAzure _azure;
 
-        private static readonly Lazy<ContainerRunnerLib> lazy = new Lazy<ContainerRunnerLib>(() => new ContainerRunnerLib());
-
-        private ContainerRunnerLib()
+        public ContainerRunnerLib()
         {
 
             #if (DEBUG)
@@ -33,9 +30,13 @@ namespace ContainerRunnerFuncApp
 
         }
 
-        public static ContainerRunnerLib Instance => lazy.Value;
-
-        public async Task<ContainerInstanceReference> CreateContainerGroupAsync(string instanceName, string resourceGroupName, string imageName, string startupCommand, ILogger log)
+        public async Task<ContainerInstanceReference> CreateContainerGroupAsync(
+            string instanceName, 
+            string resourceGroupName, 
+            string imageName, 
+            string startupCommand, 
+            ILogger log
+        )
         {
             IResourceGroup resourceGroup = null;
             try
@@ -107,7 +108,7 @@ namespace ContainerRunnerFuncApp
         public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
         {
             
-            var url = $"https://{containerInstance.Fqdn}:{containerInstance.ExternalPort}{path}";
+            var url = $"http://{containerInstance.Fqdn}:{containerInstance.ExternalPort}{path}";
 
             try
             {

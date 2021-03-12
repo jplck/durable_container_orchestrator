@@ -8,15 +8,24 @@ using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace ContainerRunnerFuncApp
 {
-    public static class Orchestrator
+    public class Orchestrator
     {
+        private readonly ILogger _log;
+        private readonly IConfiguration _configuration;
+
+        public Orchestrator(IConfiguration configuration, ILogger<Orchestrator> log)
+        {
+            _configuration = configuration;
+            _log = log;
+        }
+
         [FunctionName("ACI_Main_Orchestrator_Func")]
-        public static async Task RunMainOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context,
-            ILogger log)
+        public async Task RunMainOrchestrator(
+            [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var events = context.GetInput<List<EventGridEventPayload>>();
             List<Task> orchestrations = new List<Task>();
@@ -36,9 +45,8 @@ namespace ContainerRunnerFuncApp
         }
 
         [FunctionName("ACI_Sub_Orchestrator_Func")]
-        public static async Task<bool> RunSubOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context,
-            ILogger log)
+        public async Task<bool> RunSubOrchestrator(
+            [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             ContainerInstanceReference instanceRef = null;
             var entityId = new EntityId("ContainerInstanceStatusEntity", "ContainerInstanceStatusEntity");
@@ -46,9 +54,11 @@ namespace ContainerRunnerFuncApp
 
             try
             {
+                _log.LogInformation("Starting new orchestration run...");
+                
                 var blobPayload = context.GetInput<EventGridEventPayload>();
 
-                var containerGroupPrefix = Helpers.GetConfig()["ContainerGroupPrefix"] ?? "aci-container-group";
+                var containerGroupPrefix = _configuration["ContainerGroupPrefix"] ?? "aci-container-group";
 
                 var containerGroupName = SdkContext.RandomResourceName($"{containerGroupPrefix}-", 6);
 
@@ -62,7 +72,7 @@ namespace ContainerRunnerFuncApp
                     if (instance == null)
                     {
                         instanceCount = await entity.GetContainerGroupCountAsync();
-                        var maxInstances = int.Parse(Helpers.GetConfig()["Max_Number_Of_Instances"]);
+                        var maxInstances = int.Parse(_configuration["Max_Number_Of_Instances"]);
 
                         if (instanceCount >= maxInstances) 
                         { 
@@ -90,8 +100,7 @@ namespace ContainerRunnerFuncApp
                     }
                 }
 
-                //do work with instance
-                var externalEventTriggerEventName = Helpers.GetConfig()["Work_Done_Trigger_Keyword"];
+                var externalEventTriggerEventName = _configuration["Work_Done_Trigger_Keyword"];
 
                 var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", 
                                                                        (context.InstanceId, 
@@ -103,7 +112,7 @@ namespace ContainerRunnerFuncApp
 
                 if (!workDoneEvent.Success) { throw new TriggerRetryException(); }
  
-                log.LogInformation("Work done successfully");
+                _log.LogInformation("Work done successfully");
 
                 await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
                 await entity.ReleaseContainerInstance(instanceRef);
@@ -115,12 +124,12 @@ namespace ContainerRunnerFuncApp
                 var rethrowEx = ex;
                 if (ex is TriggerRetryException)
                 {
-                    log.LogWarning("Container was unable to execute tasks. Triggering retry.");
+                    _log.LogWarning("Container was unable to execute tasks. Triggering retry.");
                     throw ex;
                 } 
 
                 if (instanceRef != null) {
-                    log.LogWarning("Shutting down container instance due to unrecoverable error.");
+                    _log.LogWarning("Shutting down container instance due to unrecoverable error.");
                     await context.CallActivityAsync("Container_Stop_Activity", instanceRef);
                     await entity.ReleaseContainerInstance(instanceRef);
                 }
