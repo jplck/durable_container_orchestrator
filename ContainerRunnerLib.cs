@@ -122,6 +122,8 @@ namespace ContainerRunnerFuncApp
                     {
                         method = new HttpMethod("POST");
 
+                        log.LogWarning(content);
+                        
                         request = new HttpRequestMessage(method, url)
                         {
                             Content = new StringContent(content, Encoding.UTF8, "application/json")
