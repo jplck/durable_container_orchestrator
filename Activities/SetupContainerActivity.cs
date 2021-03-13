@@ -31,17 +31,15 @@ namespace ContainerRunnerFuncApp.Activities
 
             try
             {
-                var containerIp = await RestartExistingContainer(instanceReference);
-
-                if ((instanceReference.Created && string.IsNullOrEmpty(containerIp)) || !instanceReference.Created) {
-                    var containerGroup = await CreateNewContainer(instanceReference, commandLine);
-                    _log.LogInformation("Created new container.");
-                    return (true, containerGroup);
+                if (instanceReference.Created) {
+                    var containerIp = await RestartExistingContainer(instanceReference);
+                    instanceReference.IpAddress = containerIp;
+                    return (false, instanceReference);
                 }
 
-                instanceReference.IpAddress = containerIp;
-                return (false, instanceReference);
-
+                var containerGroup = await CreateNewContainer(instanceReference, commandLine);
+                _log.LogInformation("Created new container.");
+                return (true, containerGroup);
             }
             catch (Exception ex)
             {
