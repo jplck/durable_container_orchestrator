@@ -32,7 +32,8 @@ namespace ContainerRunnerFuncApp.Activities
             try
             {
                 if (instanceReference.Created) {
-                    await RestartExistingContainer(instanceReference);
+                    await _containerRunner.StartContainerGroupAsync(instanceReference, _log);
+                    _log.LogInformation($"Restarted {instanceReference.InstanceId} with Ip: {instanceReference.IpAddress}");
                     return (false, instanceReference);
                 }
 
@@ -71,12 +72,6 @@ namespace ContainerRunnerFuncApp.Activities
                                                                                   commandLine,
                                                                                   _log);
             return containerGroup;
-        }
-
-        private async Task RestartExistingContainer(ContainerInstanceReference instanceReference)
-        {
-            await _containerRunner.StartContainerGroupAsync(instanceReference, _log);
-            _log.LogInformation($"Restarted {instanceReference.InstanceId} with Ip: {instanceReference.IpAddress}");
         }
     }
 }

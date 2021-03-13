@@ -21,19 +21,19 @@ namespace ContainerRunnerFuncApp
 
         public ContainerRunnerLib()
         {
-            #if (DEBUG)
-                    _azure = Azure.Authenticate("./credentials.json").WithDefaultSubscription();
-            #else
+#if (DEBUG)
+            _azure = Azure.Authenticate("./credentials.json").WithDefaultSubscription();
+#else
                     var credentials = new AzureCredentialsFactory().FromSystemAssignedManagedServiceIdentity(MSIResourceType.AppService, AzureEnvironment.AzureGlobalCloud);
                     _azure = Azure.Authenticate(credentials).WithDefaultSubscription();
-            #endif
+#endif
         }
 
         public async Task<ContainerInstanceReference> CreateContainerGroupAsync(
-            string instanceName, 
-            string resourceGroupName, 
-            string imageName, 
-            string startupCommand, 
+            string instanceName,
+            string resourceGroupName,
+            string imageName,
+            string startupCommand,
             ILogger log
         )
         {
@@ -42,7 +42,8 @@ namespace ContainerRunnerFuncApp
             {
                 resourceGroup = await _azure.ResourceGroups.GetByNameAsync(resourceGroupName);
                 Console.WriteLine($"Found resource group with name {resourceGroupName}");
-            } catch (Exception)
+            }
+            catch (Exception)
             {
                 log.LogWarning("Resource group does not exist. Trying to create it in next step.");
             }
@@ -81,15 +82,7 @@ namespace ContainerRunnerFuncApp
                     .WithSystemAssignedManagedServiceIdentity()
                     .CreateAsync();
 
-                await Task.Run(() =>
-                {
-                    while (containerGroup.State != "Running")
-                    {
-                        var currentState = containerGroup.Refresh().State;
-                        log.LogInformation($"Polling for state of starting created container group {containerGroup.Id}:{currentState}");
-                        SdkContext.DelayProvider.Delay(5000);
-                    }
-                });
+                await RunStateVerify(containerGroup, 5000, log);
 
                 return new ContainerInstanceReference()
                 {
@@ -110,7 +103,20 @@ namespace ContainerRunnerFuncApp
                 throw ex;
             }
         }
-       
+
+        private async Task RunStateVerify(IContainerGroup containerGroup, int delay, ILogger log)
+        {
+            await Task.Run(() =>
+            {
+                while (containerGroup.State != "Running" && !string.IsNullOrEmpty(containerGroup.IPAddress))
+                {
+                    var currentState = containerGroup.Refresh().State;
+                    log.LogWarning($"Polling for state of container group {containerGroup.Id}:{currentState}:{containerGroup.IPAddress}");
+                    SdkContext.DelayProvider.Delay(delay);
+                }
+            });
+        }
+
         public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
         {
             var url = $"http://{containerInstance.IpAddress}:{containerInstance.ExternalPort}{path}";
@@ -129,7 +135,7 @@ namespace ContainerRunnerFuncApp
                         method = new HttpMethod("POST");
 
                         log.LogWarning(content);
-                        
+
                         request = new HttpRequestMessage(method, url)
                         {
                             Content = new StringContent(content, Encoding.UTF8, "application/json")
@@ -159,18 +165,11 @@ namespace ContainerRunnerFuncApp
         {
             _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
             log.LogInformation("(Re)Starting container instance from exsiting registration...");
-            
+
             await _azure.ContainerGroups.StartAsync(containerInstance.ResourceGroupName, containerInstance.Name);
             var containerGroup = await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
 
-            await Task.Run( () => {
-                while (containerGroup.State != "Running")
-                {
-                    var currentState = containerGroup.Refresh().State;
-                    log.LogInformation($"Polling for state of restarting container group {containerGroup.Id}:{currentState}");
-                    SdkContext.DelayProvider.Delay(5000);
-                }
-            });
+            await RunStateVerify(containerGroup, 5000, log);
 
             containerInstance.IpAddress = containerGroup.Refresh().IPAddress;
             log.LogInformation("Container instance made available.");
