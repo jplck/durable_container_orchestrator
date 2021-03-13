@@ -46,7 +46,7 @@ namespace ContainerRunnerFuncApp.Activities
                     throw new UnableToRecoverException(ex.Message);
                 }
 
-                _log.LogError("Unable to create/restart container instance");
+                _log.LogError($"Unable to create/restart container instance {instanceReference.InstanceId}: {ex.Message}");
                 throw new TriggerRetryException();
             }
         }
