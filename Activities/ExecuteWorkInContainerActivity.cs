@@ -33,7 +33,7 @@ namespace ContainerRunnerFuncApp.Activities
             var (instanceId, externalEventTriggerKeyword, blobUri, containerInstance) = input;
 
             var host = _config["WEBSITE_HOSTNAME"];
-            var functionKey = _config["FunctionKey"];
+            var functionKey = _config["ExternalTriggerCallbackFunctionKey"];
             var path = _config["ACIContainerEndpointPath"];
 
             _ = host ?? throw new ArgumentNullException("Host cannot be null");
