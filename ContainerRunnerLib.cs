@@ -105,7 +105,7 @@ namespace ContainerRunnerFuncApp
        
         public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
         {
-            var url = $"http://{containerInstance.IpAddress}:{containerInstance.ExternalPort}{path}";
+            var url = $"http://{containerInstance.Fqdn}:{containerInstance.ExternalPort}{path}";
             log.LogWarning(url);
             try
             {

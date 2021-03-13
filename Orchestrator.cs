@@ -54,6 +54,12 @@ namespace ContainerRunnerFuncApp
 
             try
             {
+                var retryOptions = new RetryOptions(TimeSpan.FromSeconds(15), 5)
+                {
+                    BackoffCoefficient = 1.5,
+                    Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
+                };
+
                 _log.LogInformation("Starting new orchestration run...");
                 
                 var blobPayload = context.GetInput<EventGridEventPayload>();
@@ -85,13 +91,11 @@ namespace ContainerRunnerFuncApp
                 }
 
                 bool isNew;
-                (isNew, instanceRef) = await context.CallActivityWithRetryAsync<(bool, ContainerInstanceReference)>("Container_Setup_Activity", 
-                new RetryOptions(TimeSpan.FromSeconds(15), 5)
-                {
-                    BackoffCoefficient = 1.5,
-                    Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
-                }, 
-                (instance, string.Empty));
+                (isNew, instanceRef) = await context.CallActivityWithRetryAsync<(bool, ContainerInstanceReference)>(
+                    "Container_Setup_Activity", 
+                    retryOptions, 
+                    ( instance, string.Empty )
+                );
 
                 if (isNew)
                 {
@@ -103,18 +107,16 @@ namespace ContainerRunnerFuncApp
 
                 var externalEventTriggerEventName = _configuration["WorkDoneCallbackKeyword"];
 
-                var response = await context.CallActivityWithRetryAsync<string>("Container_StartWork_Activity", 
-                                                                                new RetryOptions(TimeSpan.FromSeconds(15), 5)
-                                                                                {
-                                                                                    BackoffCoefficient = 1.5,
-                                                                                    Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
-                                                                                }, 
-                                                                                (
-                                                                                    context.InstanceId, 
-                                                                                    externalEventTriggerEventName, 
-                                                                                    blobPayload.Data.Url, 
-                                                                                    instanceRef)
-                                                                                );
+                var response = await context.CallActivityWithRetryAsync<string>(
+                    "Container_StartWork_Activity",
+                    retryOptions,
+                    (
+                        context.InstanceId,
+                        externalEventTriggerEventName,
+                        blobPayload.Data.Url,
+                        instanceRef
+                    )
+                );
 
                 var workDoneEvent = await context.WaitForExternalEvent<ContainerResponse>(externalEventTriggerEventName);
 
