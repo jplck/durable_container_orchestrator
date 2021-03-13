@@ -108,7 +108,7 @@ namespace ContainerRunnerFuncApp
         {
             
             var url = $"http://{containerInstance.Fqdn}:{containerInstance.ExternalPort}{path}";
-
+            log.LogWarning(url);
             try
             {
                 using (HttpClient client = new HttpClient())
@@ -128,7 +128,6 @@ namespace ContainerRunnerFuncApp
                         {
                             Content = new StringContent(content, Encoding.UTF8, "application/json")
                         };
-
                     }
 
                     using (HttpResponseMessage response = client.SendAsync(request).Result)
