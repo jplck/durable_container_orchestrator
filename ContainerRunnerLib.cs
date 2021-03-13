@@ -108,12 +108,13 @@ namespace ContainerRunnerFuncApp
         {
             await Task.Run(() =>
             {
-                while (containerGroup.State != "Running" && !string.IsNullOrEmpty(containerGroup.IPAddress))
+                while (containerGroup.State != "Running" && string.IsNullOrEmpty(containerGroup.IPAddress))
                 {
                     var currentState = containerGroup.Refresh().State;
                     log.LogWarning($"Polling for state of container group {containerGroup.Id}:{currentState}:{containerGroup.IPAddress}");
                     SdkContext.DelayProvider.Delay(delay);
                 }
+                log.LogError($"Got state result for container group {containerGroup.Id} with state:{containerGroup.State} and Ip: {containerGroup.IPAddress}");
             });
         }
 
