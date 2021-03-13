@@ -47,7 +47,7 @@ namespace ContainerRunnerFuncApp.Activities
                 }
 
                 _log.LogError("Unable to create/restart container instance");
-                throw new TriggerRetryException("Unable to create/restart container. Try again later.");
+                throw new TriggerRetryException();
             }
         }
 

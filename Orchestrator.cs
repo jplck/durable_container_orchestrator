@@ -76,7 +76,8 @@ namespace ContainerRunnerFuncApp
 
                         if (instanceCount >= maxInstances) 
                         { 
-                            throw new TriggerRetryException("Maximum number of parallel container instances reached. Triggering retry."); 
+                            _log.LogInformation("Maximum number of parallel container instances reached. Triggering retry.");
+                            throw new TriggerRetryException(); 
                         }
 
                         instance = await entity.ReserveEmptyContainerGroupReference(containerGroupName);
