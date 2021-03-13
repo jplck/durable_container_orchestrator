@@ -32,8 +32,7 @@ namespace ContainerRunnerFuncApp.Activities
             try
             {
                 if (instanceReference.Created) {
-                    var containerIp = await RestartExistingContainer(instanceReference);
-                    instanceReference.IpAddress = containerIp;
+                    await RestartExistingContainer(instanceReference);
                     return (false, instanceReference);
                 }
 
@@ -74,20 +73,10 @@ namespace ContainerRunnerFuncApp.Activities
             return containerGroup;
         }
 
-        private async Task<string> RestartExistingContainer(ContainerInstanceReference instanceReference)
+        private async Task RestartExistingContainer(ContainerInstanceReference instanceReference)
         {
-            var group = await _containerRunner.GetContainerGroupAsync(instanceReference, _log);
-            
-            if (group == null) {
-                _log.LogInformation($"Unable to fetch container group for ref {instanceReference.InstanceId}");
-                return string.Empty;
-            }
-
             await _containerRunner.StartContainerGroupAsync(instanceReference, _log);
-            var aci = await _containerRunner.GetContainerGroupAsync(instanceReference, _log);
-            _log.LogInformation($"Restarted {group.Id} with Ip: {aci.IPAddress}");
-
-            return aci.IPAddress;
+            _log.LogInformation($"Restarted {instanceReference.InstanceId} with Ip: {instanceReference.IpAddress}");
         }
     }
 }

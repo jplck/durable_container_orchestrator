@@ -80,8 +80,16 @@ namespace ContainerRunnerFuncApp
                     .WithRestartPolicy(ContainerGroupRestartPolicy.Never)
                     .WithSystemAssignedManagedServiceIdentity()
                     .CreateAsync();
-            
-                Console.WriteLine($"Container group with container Id {containerGroup.Id} created.");
+
+                await Task.Run(() =>
+                {
+                    while (containerGroup.State != "Running")
+                    {
+                        var currentState = containerGroup.Refresh().State;
+                        log.LogInformation($"Polling for state of starting created container group {containerGroup.Id}:{currentState}");
+                        SdkContext.DelayProvider.Delay(5000);
+                    }
+                });
 
                 return new ContainerInstanceReference()
                 {
@@ -153,7 +161,18 @@ namespace ContainerRunnerFuncApp
             log.LogInformation("(Re)Starting container instance from exsiting registration...");
             
             await _azure.ContainerGroups.StartAsync(containerInstance.ResourceGroupName, containerInstance.Name);
+            var containerGroup = await _azure.ContainerGroups.GetByIdAsync(containerInstance.InstanceId);
 
+            await Task.Run( () => {
+                while (containerGroup.State != "Running")
+                {
+                    var currentState = containerGroup.Refresh().State;
+                    log.LogInformation($"Polling for state of restarting container group {containerGroup.Id}:{currentState}");
+                    SdkContext.DelayProvider.Delay(5000);
+                }
+            });
+
+            containerInstance.IpAddress = containerGroup.Refresh().IPAddress;
             log.LogInformation("Container instance made available.");
         }
 
