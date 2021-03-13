@@ -103,11 +103,18 @@ namespace ContainerRunnerFuncApp
 
                 var externalEventTriggerEventName = _configuration["WorkDoneCallbackKeyword"];
 
-                var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", 
-                                                                       (context.InstanceId, 
-                                                                        externalEventTriggerEventName, 
-                                                                        blobPayload.Data.Url, 
-                                                                        instanceRef));
+                var response = await context.CallActivityWithRetryAsync<string>("Container_StartWork_Activity", 
+                                                                                new RetryOptions(TimeSpan.FromSeconds(15), 5)
+                                                                                {
+                                                                                    BackoffCoefficient = 1.5,
+                                                                                    Handle = (ex) => ex.InnerException.Message == TriggerRetryException.DefaultMessage
+                                                                                }, 
+                                                                                (
+                                                                                    context.InstanceId, 
+                                                                                    externalEventTriggerEventName, 
+                                                                                    blobPayload.Data.Url, 
+                                                                                    instanceRef)
+                                                                                );
 
                 var workDoneEvent = await context.WaitForExternalEvent<ContainerResponse>(externalEventTriggerEventName);
 

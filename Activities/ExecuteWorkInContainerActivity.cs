@@ -6,6 +6,7 @@ using System;
 using ContainerRunnerFuncApp.Model;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
+using ContainerRunnerFuncApp.Exceptions;
 
 namespace ContainerRunnerFuncApp.Activities
 {
@@ -43,17 +44,24 @@ namespace ContainerRunnerFuncApp.Activities
 
             _log.LogWarning($"Doing some work on instance {containerInstance.Name}.");
 
-            var result = await _containerRunner.SendRequestToContainerInstance(
-                containerInstance, 
-                path, 
-                JsonConvert.SerializeObject(new ContainerRequest
-                {
-                    BlobUri = blobUri,
-                    ExternalTriggerCallbackUrl = $"https://{host}/runtime/webhooks/durabletask/instances/{instanceId}/raiseEvent/{externalEventTriggerKeyword}{functionKeyString}"
-                }
-            ) , _log);
-
-            return result;
+            try {
+                var result = await _containerRunner.SendRequestToContainerInstance(
+                    containerInstance, 
+                    path, 
+                    JsonConvert.SerializeObject(new ContainerRequest
+                    {
+                        BlobUri = blobUri,
+                        ExternalTriggerCallbackUrl = $"https://{host}/runtime/webhooks/durabletask/instances/{instanceId}/raiseEvent/{externalEventTriggerKeyword}{functionKeyString}"
+                    }
+                ) , _log);
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex.Message);
+                throw new TriggerRetryException();
+            }
         }
     }
 }
