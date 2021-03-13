@@ -57,9 +57,9 @@ namespace ContainerRunnerFuncApp.Activities
             string commandLine
         )
         {
-            var acrHost = _config["ACR_HOST"];
-            var acrImageName = _config["ACR_IMG_NAME"];
-            var resourceGroupName = _config["ACI_Resource_Group"];
+            var acrHost = _config["ACRHost"];
+            var acrImageName = _config["ACRImgName"];
+            var resourceGroupName = _config["ACIResourceGroup"];
 
             _ = acrHost ?? throw new ArgumentNullException("ACR Host cannot be null");
             _ = acrImageName ?? throw new ArgumentNullException("ACR Image Name cannot be null");

@@ -9,24 +9,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace ContainerRunnerFuncApp.Activities
 {
-    public class ContainerRequest
-    {
-        [JsonProperty("blobUri")]
-        public string BlobUri { get; set; }
-
-        [JsonProperty("externalTriggerCallbackUrl")]
-        public string ExternalTriggerCallbackUrl { get; set; }
-    }
-
-    public class ContainerResponse
-    {
-        [JsonProperty("blobUri")]
-        public string BlobUri { get; set; }
-
-        [JsonProperty("success")]
-        public bool Success { get; set; }
-    }
-
     public class ExecuteWorkInContainerActivity
     {
         private readonly IConfiguration _config;
@@ -50,9 +32,9 @@ namespace ContainerRunnerFuncApp.Activities
         {
             var (instanceId, externalEventTriggerKeyword, blobUri, containerInstance) = input;
 
-            var host = _config["Host"];
+            var host = _config["WEBSITE_HOSTNAME"];
             var functionKey = _config["FunctionKey"];
-            var path = _config["ACI_Container_Endpoint_Path"];
+            var path = _config["ACIContainerEndpointPath"];
 
             _ = host ?? throw new ArgumentNullException("Host cannot be null");
             _ = path ?? throw new ArgumentNullException("ACI Path cannot be null");

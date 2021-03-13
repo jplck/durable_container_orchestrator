@@ -54,11 +54,11 @@ namespace ContainerRunnerFuncApp
 
                 Console.WriteLine($"Resource group {resourceGroupName} created.");
 
-                var acrHost = Helpers.GetConfig()["ACR_Host"];
-                var acrUsername = Helpers.GetConfig()["ACR_Username"];
-                var acrPwd = Helpers.GetConfig()["ACR_Pwd"];
+                var acrHost = Helpers.GetConfig()["ACRHost"];
+                var acrUsername = Helpers.GetConfig()["ACRUsername"];
+                var acrPwd = Helpers.GetConfig()["ACRPwd"];
 
-                var containerPortConfig = Helpers.GetConfig()["ACI_Container_Endpoint_Port"];
+                var containerPortConfig = Helpers.GetConfig()["ACIContainerEndpointPort"];
 
                 _ = containerPortConfig ?? throw new ArgumentNullException("ACI port cannot be null");
 

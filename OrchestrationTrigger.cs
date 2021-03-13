@@ -16,7 +16,7 @@ namespace ContainerRunnerFuncApp
     {
         [FunctionName("Orchestration_Trigger_Func_ServiceBus")]
         public static async Task RunVerifierStartServiceBusQueueTrigger(
-                    [ServiceBusTrigger("%SbQueueName%", Connection = "ServiceBusConnection")] string eventData,
+                    [ServiceBusTrigger("%ServiceBusQueueName%", Connection = "ServiceBusConnection")] string eventData,
                     [DurableClient] IDurableOrchestrationClient starter,
                     ILogger log)
         {
