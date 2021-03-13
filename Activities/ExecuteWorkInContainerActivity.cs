@@ -49,7 +49,7 @@ namespace ContainerRunnerFuncApp.Activities
                 JsonConvert.SerializeObject(new ContainerRequest
                 {
                     BlobUri = blobUri,
-                    ExternalTriggerCallbackUrl = $"{host}/runtime/webhooks/durabletask/instances/{instanceId}/raiseEvent/{externalEventTriggerKeyword}{functionKeyString}"
+                    ExternalTriggerCallbackUrl = $"https://{host}/runtime/webhooks/durabletask/instances/{instanceId}/raiseEvent/{externalEventTriggerKeyword}{functionKeyString}"
                 }
             ) , _log);
 
