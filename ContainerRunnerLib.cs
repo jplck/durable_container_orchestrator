@@ -69,14 +69,12 @@ namespace ContainerRunnerFuncApp
                     .WithExistingResourceGroup(resourceGroupName)
                     .WithLinux()
                     .WithPrivateImageRegistry(acrHost, acrUsername, acrPwd)
-                    //.WithPublicImageRegistryOnly()
                     .WithoutVolume()
                     .DefineContainerInstance($"{instanceName}")
                         .WithImage(imageName)
                         .WithExternalTcpPort(containerPort)
                         .WithCpuCoreCount(1.0)
                         .WithMemorySizeInGB(1.0)
-                        //.WithStartingCommandLine(startupCommand)
                         .Attach()
                     .WithDnsPrefix(instanceName)
                     .WithRestartPolicy(ContainerGroupRestartPolicy.Never)
@@ -107,7 +105,6 @@ namespace ContainerRunnerFuncApp
        
         public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
         {
-            
             var url = $"http://{containerInstance.IpAddress}:{containerInstance.ExternalPort}{path}";
             log.LogWarning(url);
             try
