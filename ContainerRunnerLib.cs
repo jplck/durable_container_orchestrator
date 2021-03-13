@@ -108,7 +108,7 @@ namespace ContainerRunnerFuncApp
         {
             await Task.Run(() =>
             {
-                while (containerGroup.State != "Running" && string.IsNullOrEmpty(containerGroup.IPAddress))
+                while (containerGroup.State != "Running" || string.IsNullOrEmpty(containerGroup.IPAddress))
                 {
                     var currentState = containerGroup.Refresh().State;
                     log.LogWarning($"Polling for state of container group {containerGroup.Id}:{currentState}:{containerGroup.IPAddress}");
