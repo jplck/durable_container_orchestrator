@@ -9,24 +9,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace ContainerRunnerFuncApp.Activities
 {
-    public class ContainerRequest
-    {
-        [JsonProperty("blobUri")]
-        public string BlobUri { get; set; }
-
-        [JsonProperty("externalTriggerCallbackUrl")]
-        public string ExternalTriggerCallbackUrl { get; set; }
-    }
-
-    public class ContainerResponse
-    {
-        [JsonProperty("blobUri")]
-        public string BlobUri { get; set; }
-
-        [JsonProperty("success")]
-        public bool Success { get; set; }
-    }
-
     public class ExecuteWorkInContainerActivity
     {
         private readonly IConfiguration _config;
