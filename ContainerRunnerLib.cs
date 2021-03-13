@@ -79,7 +79,7 @@ namespace ContainerRunnerFuncApp
                         //.WithStartingCommandLine(startupCommand)
                         .Attach()
                     .WithDnsPrefix(instanceName)
-                    .WithRestartPolicy(ContainerGroupRestartPolicy.Never)
+                    .WithRestartPolicy(ContainerGroupRestartPolicy.Always)
                     .WithSystemAssignedManagedServiceIdentity()
                     .CreateAsync();
             
