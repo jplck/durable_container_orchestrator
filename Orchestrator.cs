@@ -72,7 +72,7 @@ namespace ContainerRunnerFuncApp
                     if (instance == null)
                     {
                         instanceCount = await entity.GetContainerGroupCountAsync();
-                        var maxInstances = int.Parse(_configuration["Max_Number_Of_Instances"]);
+                        var maxInstances = int.Parse(_configuration["MaxNumberOfInstances"]);
 
                         if (instanceCount >= maxInstances) 
                         { 
@@ -100,7 +100,7 @@ namespace ContainerRunnerFuncApp
                     }
                 }
 
-                var externalEventTriggerEventName = _configuration["Work_Done_Trigger_Keyword"];
+                var externalEventTriggerEventName = _configuration["WorkDoneCallbackKeyword"];
 
                 var response = await context.CallActivityAsync<string>("Container_StartWork_Activity", 
                                                                        (context.InstanceId, 

@@ -50,9 +50,9 @@ namespace ContainerRunnerFuncApp.Activities
         {
             var (instanceId, externalEventTriggerKeyword, blobUri, containerInstance) = input;
 
-            var host = _config["Host"];
+            var host = _config["WEBSITE_HOSTNAME"];
             var functionKey = _config["FunctionKey"];
-            var path = _config["ACI_Container_Endpoint_Path"];
+            var path = _config["ACIContainerEndpointPath"];
 
             _ = host ?? throw new ArgumentNullException("Host cannot be null");
             _ = path ?? throw new ArgumentNullException("ACI Path cannot be null");
