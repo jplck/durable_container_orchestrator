@@ -75,16 +75,12 @@ namespace ContainerRunnerFuncApp.Activities
 
         private async Task<bool> RestartExistingContainer(ContainerInstanceReference instanceReference)
         {
-            _log.LogInformation("Fetching available container group...");
             var group = await _containerRunner.GetContainerGroupAsync(instanceReference, _log);
             
-
             if (group == null) {
                 _log.LogInformation($"Unable to fetch container group for ref {instanceReference.InstanceId}");
                 return false;
             }
-
-            _log.LogInformation($"Fetched container group to restart with Id {group.Id}");
 
             if (group.State != "Stopped")
             {
@@ -92,10 +88,9 @@ namespace ContainerRunnerFuncApp.Activities
                 await group.StopAsync();
             }
 
-            _log.LogInformation($"Restarting container group with Id {group.Id}");
             await _containerRunner.StartContainerGroupAsync(instanceReference, _log);
             _log.LogInformation($"Restarted {group.Id}");
-            
+
             return true;
         }
     }
