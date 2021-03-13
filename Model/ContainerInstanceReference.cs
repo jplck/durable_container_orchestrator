@@ -31,5 +31,8 @@ namespace ContainerRunnerFuncApp.Model
         [JsonProperty("created")]
         [DefaultValue(false)]
         public bool Created { get; set; }
+
+        [JsonProperty("ipAddress")]
+        public string IpAddress { get; set; }
     }
 }
