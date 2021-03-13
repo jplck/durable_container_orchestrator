@@ -105,7 +105,7 @@ namespace ContainerRunnerFuncApp
        
         public async Task<string> SendRequestToContainerInstance(ContainerInstanceReference containerInstance, string path, string content, ILogger log)
         {
-            var url = $"http://{containerInstance.Fqdn}:{containerInstance.ExternalPort}{path}";
+            var url = $"http://{containerInstance.IpAddress}:{containerInstance.ExternalPort}{path}";
             log.LogWarning(url);
             try
             {
@@ -151,7 +151,7 @@ namespace ContainerRunnerFuncApp
         {
             _ = containerInstance ?? throw new ArgumentNullException("Container instance reference cannot be null.");
             log.LogInformation("(Re)Starting container instance from exsiting registration...");
-
+            
             await _azure.ContainerGroups.StartAsync(containerInstance.ResourceGroupName, containerInstance.Name);
 
             log.LogInformation("Container instance made available.");

@@ -31,12 +31,15 @@ namespace ContainerRunnerFuncApp.Activities
 
             try
             {
-                if ((instanceReference.Created && !await RestartExistingContainer(instanceReference)) || !instanceReference.Created) {
+                var containerIp = await RestartExistingContainer(instanceReference);
+
+                if ((instanceReference.Created && string.IsNullOrEmpty(containerIp)) || !instanceReference.Created) {
                     var containerGroup = await CreateNewContainer(instanceReference, commandLine);
                     _log.LogInformation("Created new container.");
                     return (true, containerGroup);
                 }
 
+                instanceReference.IpAddress = containerIp;
                 return (false, instanceReference);
 
             }
@@ -73,25 +76,20 @@ namespace ContainerRunnerFuncApp.Activities
             return containerGroup;
         }
 
-        private async Task<bool> RestartExistingContainer(ContainerInstanceReference instanceReference)
+        private async Task<string> RestartExistingContainer(ContainerInstanceReference instanceReference)
         {
             var group = await _containerRunner.GetContainerGroupAsync(instanceReference, _log);
             
             if (group == null) {
                 _log.LogInformation($"Unable to fetch container group for ref {instanceReference.InstanceId}");
-                return false;
-            }
-
-            if (group.State != "Stopped")
-            {
-                _log.LogWarning($"Force stopping container group with Id {group.Id}");
-                await group.StopAsync();
+                return string.Empty;
             }
 
             await _containerRunner.StartContainerGroupAsync(instanceReference, _log);
-            _log.LogInformation($"Restarted {group.Id}");
+            var aci = await _containerRunner.GetContainerGroupAsync(instanceReference, _log);
+            _log.LogInformation($"Restarted {group.Id} with Ip: {aci.IPAddress}");
 
-            return true;
+            return aci.IPAddress;
         }
     }
 }
